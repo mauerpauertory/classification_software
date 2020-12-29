@@ -3,6 +3,9 @@ from DataPreparation import saveMatrixToFile, saveTrainingModel, loadTrainModel,
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, SCORERS
 from sklearn.model_selection import cross_val_predict, cross_validate, KFold
 
+from sklearn.feature_extraction.text import TfidfVectorizer
+from collections import Counter
+from sklearn.pipeline import Pipeline
 from sklearn import model_selection, preprocessing, svm
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import GaussianNB, MultinomialNB
@@ -110,7 +113,7 @@ def kfoldvalidation(classifier, kfold, x, y, file_name):
 
     Parameters
     ----------
-    classifier - certain classifier 
+    classifier - classifier Pipeline
     kfold : int 
         number determining the number of {k}-fold validations 
     x : array 
@@ -159,12 +162,12 @@ def train_dataI(train_x, test_x, train_y, test_y, case, mode=False, text=''):
     mode : boolean 
         identifies either train mode or loading
     """
-    start = time.time()
     nb_path = construct_path(dataI, nb_model, case)
     rf_path = construct_path(dataI, rf_model, case)
     svm_path = construct_path(dataI, svm_model, case)
     all_path = construct_path(dataI, all_models, case)
     saveReport(text, all_path)
+    start = time.time()
     all_scores = []
     print("Current model is NAIVE BAYES")
     NB_score = train_or_load(naive_bayes_classifier, train_x, test_x, train_y, test_y, nb_path+pred, nb_path, mode)
@@ -182,7 +185,15 @@ def train_dataI(train_x, test_x, train_y, test_y, case, mode=False, text=''):
     print("the whole process took {}".format(full_time))
     return all_scores
 
-def train_cross_validate(x, y, k, data, case, text=''):
+def train_cross_validate(x, y, k, data, case, text, custom_tokenizer):
+    """
+    Parameters
+    ----------
+    x - dataset
+
+    """
+    start = time.time()
+    k_fold = KFold(n_splits=k, shuffle=True, random_state=42)
     nb_path = construct_path(data, nb_model, case)
     rf_path = construct_path(data, rf_model, case)
     svm_path = construct_path(data, svm_model, case)
@@ -190,28 +201,49 @@ def train_cross_validate(x, y, k, data, case, text=''):
     saveReport(text, all_path)
     print("Cross-validating with %s folds" %(k))
     print("Training Naive Bayes")
+    clf_nb = Pipeline([('vect', TfidfVectorizer(tokenizer=custom_tokenizer)), ('nb', naive_bayes_classifier)])
+    clf_rf = Pipeline([('vect', TfidfVectorizer(tokenizer=custom_tokenizer)), ('rf', random_forest_classifier)])
+    clf_svm = Pipeline([('vect', TfidfVectorizer(tokenizer=custom_tokenizer)), ('svm', svm_classifier_linear)])
     all_scores = []
-    NB_scores = kfoldvalidation(naive_bayes_classifier, k, x, y, nb_path)
+    NB_scores = kfoldvalidation(clf_nb, k_fold, x, y, nb_path)
     print("Training SVM")
-    SVM_scores = kfoldvalidation(svm_classifier_linear, k, x, y, svm_path)
+    SVM_scores = kfoldvalidation(clf_svm, k_fold, x, y, svm_path)
     print("Training RF")
-    RF_scores = kfoldvalidation(random_forest_classifier, k, x, y, rf_path)
+    RF_scores = kfoldvalidation(clf_rf, k_fold, x, y, rf_path)
     all_scores.append(NB_scores)
     all_scores.append(SVM_scores)
     all_scores.append(RF_scores)
     print("Saving all_scores to {}".format(all_path))
     saveReport(all_scores, all_path)
     saveMetrics(all_scores, all_path, False)
-    return all_scores
+    finish_time = "execution time is {} ".format(time.time() - start)
+    return all_scores   
   
 
-  
-def kfoldsplit(times, x, y):
-    k_fold = KFold(n_splits=times)
+def kfoldsplit(times, x, y, custom_tokenizer):
+    k_fold = KFold(n_splits=times, shuffle=True, random_state=42)
     for n, (train_indices, test_indices) in enumerate(k_fold.split(x)):
         print('Fold #%s' % (n))
-        print('Train: %s | test: %s' % (train_indices, test_indices)) 
+        #print('Train: %s | test: %s' % (train_indices, test_indices)) 
         x_train, x_test = x[train_indices], x[test_indices]
         y_train, y_test = y[train_indices], y[test_indices]
-        print('X_train: {} \n y_train: {}'.format(x_train, y_train))
-        print('X_test: {} \n y_test: {}'.format(x_test, y_test))
+        print(Counter(y_train))
+        print(Counter(y_test))
+        tfidf_n = TfidfVectorizer(tokenizer=custom_tokenizer)
+        train_vector = tfidf_n.fit_transform(x_train)
+        test_vector = tfidf_n.transform(x_test)
+        print(train_vector.shape)
+        print(test_vector.shape)
+        start = time.time()
+        naive_bayes_classifier.fit(train_vector, y_train)
+        svm_classifier_linear.fit(train_vector, y_train)
+        nb_y_pred = naive_bayes_classifier.predict(test_vector)
+        svm_y_pred = svm_classifier_linear.predict(test_vector)
+        report_dict_nb = classification_report(y_test,nb_y_pred, output_dict=True)
+        report_dict_svm = classification_report(y_test,svm_y_pred, output_dict=True)
+        execution_time = time.time() - start
+        print("Execution time is %s" %(execution_time))
+        print("Naive Bayes #%s results:\n" %n)
+        print(report_dict_nb)
+        print("SVM #%s results:\n" %n)
+        print(report_dict_svm)

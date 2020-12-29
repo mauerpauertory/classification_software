@@ -4,7 +4,7 @@ from nltk.corpus import stopwords
 
 import re 
 
-def custom_tokenizer(text):
+def simple_tokenizer(text):
     """ custom tokenizer that uses nltk.word_tokenize for the main logic
 
     additionaly, removes from the line: 
@@ -47,7 +47,7 @@ def tokenize_stemmer(text):
     """
     ps = PorterStemmer()
     stemmed = []
-    tokens = custom_tokenizer(text)
+    tokens = simple_tokenizer(text)
     for token in tokens:
         stemmed.append(ps.stem(token))
     return stemmed 
@@ -68,7 +68,7 @@ def full_preprocessing(text):
     
     """
     english_stopwords = set(stopwords.words('english')) 
-    tokens = custom_tokenizer(text)
+    tokens = simple_tokenizer(text)
     ps = PorterStemmer()
     preprocessed_line = []
     for token in tokens:

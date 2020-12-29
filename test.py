@@ -3,18 +3,21 @@
 import DataPreparation as prep
 import ClassificationAlgorithms as cl
 
-from PreprocessingPhase import custom_tokenizer, tokenize_stemmer, full_preprocessing
+from PreprocessingPhase import simple_tokenizer, tokenize_stemmer, full_preprocessing
 
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn import model_selection
 
-
-
+from nltk.stem import PorterStemmer
+from nltk.tokenize import word_tokenize
+from gensim.utils import simple_preprocess
+from gensim.parsing.porter import PorterStemmer
 
 import numpy as np
 import time
 import pandas 
+import re 
 
 label = 'label'
 title = 'title'
@@ -49,7 +52,24 @@ sentence = ["8 Fall Shows To Be Excited About, 10 Shouldn't To Give A Chance, An
              "25 Reasons A Trip To Costa Rica Could Actually Change Your Life"]
 sent_labels = [1, 1, 1, 1, 0, 0, 1, 1]             
 
+stemming_example = ["They Released 14 Wolves Into A Park. What Happens Next Is A Miracle And Proves That We Must Take Care Of Our Amazing Planet.",
+                    "A Stanford professor says eliminating 2 phrases from your vocabulary can make you more successful"]
 
+ps = PorterStemmer()
+
+stemming_example_transformed = []
+for line in stemming_example:
+    stemming_example_transformed.append(" ".join(tokenize_stemmer(line)))
+
+stemming_example_transformed[0] = stemming_example_transformed[0].replace(" .", ".")
+stemming_example_transformed[0] = stemming_example_transformed[0].replace("into park", "into a park")
+stemming_example_transformed[0] = stemming_example_transformed[0].replace("is miracl", "is a miracl")
+print()
+for k,line in enumerate(stemming_example):
+    print()
+    print("\033[1mOriginal line #%d:\033[1m\x1b[0m \n%s\x1b[0m" % (k+1, line))
+    print("\033[1mStemmed line #%d:\033[1m\x1b[0m \n%s\x1b[0m" % (k+1, stemming_example_transformed[k]))
+print()
 def for_thesis_tokenization():
     thesis_examples = ["Apple might finally get rid of the most disliked iPhone model", 
                     "You'll Never Guess Who Chicago Is Hiring To Help Deal With It's Rat Problem. It's Perfect!",
