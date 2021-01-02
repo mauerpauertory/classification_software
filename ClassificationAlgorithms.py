@@ -9,6 +9,7 @@ from sklearn.pipeline import Pipeline
 from sklearn import model_selection, preprocessing, svm
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import GaussianNB, MultinomialNB
+from sklearn.linear_model import LogisticRegression
 
 ##### PATH VARIABLES FOR DIFFERENT ALGORITHMS, DATA AND SCENARIOS ######
 main_path = './dataset/Dataset'
@@ -21,7 +22,7 @@ case3 = '3'
 nb_model = '/nb_model_'
 rf_model = '/rf_model_'
 svm_model = '/svm_model_'
-cnn_model = '/cnn_model_'
+lr_model = '/lr_model_'
 all_models = '/all_models_'
 pred = '_y_pred'
 result_path = '/results'
@@ -50,7 +51,7 @@ def construct_path(data, model, case, pred=False):
 ############# ALGORITHMS #############################################
 random_forest_classifier = RandomForestClassifier(n_estimators=1000, random_state=0)
 naive_bayes_classifier = MultinomialNB()
-cnn_classifier = 4
+logistic_regression_classifier = LogisticRegression()
 svm_classifier_linear = svm.SVC(kernel='linear')
 
 ############# TRAIN METHODS ####################################################
@@ -165,6 +166,7 @@ def train_dataI(train_x, test_x, train_y, test_y, case, mode=False, text=''):
     nb_path = construct_path(dataI, nb_model, case)
     rf_path = construct_path(dataI, rf_model, case)
     svm_path = construct_path(dataI, svm_model, case)
+    lr_path = construct_path(dataI, lr_model, case)
     all_path = construct_path(dataI, all_models, case)
     saveReport(text, all_path)
     start = time.time()
@@ -175,9 +177,12 @@ def train_dataI(train_x, test_x, train_y, test_y, case, mode=False, text=''):
     SVM_score = train_or_load(svm_classifier_linear, train_x, test_x, train_y, test_y, svm_path+pred, svm_path, mode)
     print("Current model is RANDOM FOREST")
     RF_score = train_or_load(random_forest_classifier, train_x, test_x, train_y, test_y, rf_path+pred, rf_path, mode)
+    print("Current model is LOGISTIC REGRESSION")
+    LR_score = train_or_load(logistic_regression_classifier, train_x, test_x, train_y, test_y, lr_path+pred, lr_path, mode)
     all_scores.append(NB_score)
     all_scores.append(SVM_score)
     all_scores.append(RF_score)
+    all_scores.append(LR_score)
     saveReport(all_scores, all_path)
     saveMetrics(all_scores, all_path, False)
     full_time = time.time()-start
@@ -197,6 +202,7 @@ def train_cross_validate(x, y, k, data, case, text, custom_tokenizer):
     nb_path = construct_path(data, nb_model, case)
     rf_path = construct_path(data, rf_model, case)
     svm_path = construct_path(data, svm_model, case)
+    lr_path = construct_path(data, lr_model, case)
     all_path = construct_path(data, all_models, case)
     saveReport(text, all_path)
     print("Cross-validating with %s folds" %(k))
@@ -204,15 +210,19 @@ def train_cross_validate(x, y, k, data, case, text, custom_tokenizer):
     clf_nb = Pipeline([('vect', TfidfVectorizer(tokenizer=custom_tokenizer)), ('nb', naive_bayes_classifier)])
     clf_rf = Pipeline([('vect', TfidfVectorizer(tokenizer=custom_tokenizer)), ('rf', random_forest_classifier)])
     clf_svm = Pipeline([('vect', TfidfVectorizer(tokenizer=custom_tokenizer)), ('svm', svm_classifier_linear)])
+    clf_lr = Pipeline([('vect', TfidfVectorizer(tokenizer=custom_tokenizer)), ('lr', logistic_regression_classifier)])
     all_scores = []
     NB_scores = kfoldvalidation(clf_nb, k_fold, x, y, nb_path)
     print("Training SVM")
     SVM_scores = kfoldvalidation(clf_svm, k_fold, x, y, svm_path)
-    print("Training RF")
+    print("Training Random Forest")
     RF_scores = kfoldvalidation(clf_rf, k_fold, x, y, rf_path)
+    print("Training Logistic Regression")
+    LR_scores = kfoldvalidation(clf_lr, k_fold, x, y, lr_path)
     all_scores.append(NB_scores)
     all_scores.append(SVM_scores)
     all_scores.append(RF_scores)
+    all_scores.append(LR_scores)
     print("Saving all_scores to {}".format(all_path))
     saveReport(all_scores, all_path)
     saveMetrics(all_scores, all_path, False)
